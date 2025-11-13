@@ -1,0 +1,23 @@
+{
+  "name": "vulnerable-sis",
+  "version": "1.0.0",
+  "description": "Intentionally vulnerable student information system for penetration testing",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "postinstall": "echo 'Dependencies installed successfully'"
+  },
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql": "^2.18.1",
+    "body-parser": "^1.20.2",
+    "cookie-parser": "^1.4.6",
+    "multer": "^1.4.5-lts.1",
+    "ejs": "^3.1.9",
+    "cors": "^2.8.5"
+  }
+}

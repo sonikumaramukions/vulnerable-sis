@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notice Board - Student Information System</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="logo-section">
+                <img src="images/logo.png" alt="TRIPATHI GROUP OF INSTITUTIONS" id="headerLogo" onerror="this.style.display='none'">
+                <div class="header-text">
+                    <h2>TRIPATHI GROUP OF INSTITUTIONS</h2>
+                    <p class="tagline">(Deemed to be University under Section 3 of the UGC Act, 1956)</p>
+                </div>
+            </div>
+            
+            <div class="header-icons">
+                <button class="icon-btn" onclick="toggleSidebar()" title="Menu">☰</button>
+                <button class="icon-btn" onclick="loadSection('documents')" title="Documents">📄</button>
+                <button class="icon-btn" onclick="loadSection('announcements')" title="Announcements">📢</button>
+                <button class="icon-btn active" onclick="loadSection('noticeboard')" title="Notice Board">📋</button>
+                <button class="icon-btn" onclick="loadSection('onlineclasses')" title="Online Classes">📹</button>
+                <button class="icon-btn" onclick="loadSection('database')" title="Database">🗄️</button>
+            </div>
+            
+            <div class="user-section">
+                <img id="userPhoto" src="images/default-user.png" alt="User" class="user-photo" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Ccircle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23667eea%22/%3E%3C/svg%3E'">
+                <span id="userName" class="user-name"></span>
+                <button class="dropdown-btn" onclick="showUserMenu()">▼</button>
+                <button class="logout-btn" onclick="logout()" title="Logout">⚡</button>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar" id="sidebar">
+                <nav class="sidebar-nav">
+                    <div class="nav-section">
+                        <h4 class="nav-section-title" onclick="toggleNavSection('academics')">
+                            <span>Academics</span>
+                            <span class="nav-arrow">▼</span>
+                        </h4>
+                        <ul class="nav-list" id="academics-nav">
+                            <li><a href="#" onclick="loadSection('registration')" class="nav-link">
+                                <span class="nav-icon">📝</span> Registration
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('courses')" class="nav-link">
+                                <span class="nav-icon">📚</span> Courses
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('mycourses')" class="nav-link">
+                                <span class="nav-icon">📖</span> My Courses
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('faculty')" class="nav-link">
+                                <span class="nav-icon">👨‍🏫</span> My Faculty
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('attendance')" class="nav-link">
+                                <span class="nav-icon">📅</span> My Attendance
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('documents')" class="nav-link">
+                                <span class="nav-icon">📄</span> Documents View
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('resources')" class="nav-link">
+                                <span class="nav-icon">📚</span> Resources
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('onlineclasses')" class="nav-link">
+                                <span class="nav-icon">📹</span> Online Classes Link
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('mentor')" class="nav-link">
+                                <span class="nav-icon">👤</span> Mentor
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('cp')" class="nav-link">
+                                <span class="nav-icon">📊</span> Continual Evaluation (CP)
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('ncp')" class="nav-link">
+                                <span class="nav-icon">📊</span> Continual Evaluation (NCP)
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('marks')" class="nav-link">
+                                <span class="nav-icon">📋</span> Consolidated Marks List
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('grades')" class="nav-link">
+                                <span class="nav-icon">📊</span> Grade List
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('answers')" class="nav-link">
+                                <span class="nav-icon">📝</span> Suggested Answers
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('disciplinary')" class="nav-link">
+                                <span class="nav-icon">⚠️</span> Disciplinary
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('electives')" class="nav-link">
+                                <span class="nav-icon">🎯</span> Electives
+                            </a></li>
+                        </ul>
+                    </div>
+                </nav>
+            </aside>
+            
+            <!-- Main Content Area -->
+            <main class="content-area">
+                <div class="content-header">
+                    <button class="sidebar-toggle" onclick="toggleSidebar()">◀◀</button>
+                    <h1>Notice Board</h1>
+                    <div class="content-actions">
+                        <button class="action-btn" onclick="refreshNotices()" title="Refresh">🔄</button>
+                        <button class="action-btn" onclick="viewNotices()" title="View">👁️</button>
+                        <button class="action-btn" onclick="listView()" title="List">☰</button>
+                    </div>
+                </div>
+                
+                <div id="mainContent" class="main-content-area">
+                    <div id="noticesContainer" class="notices-container">
+                        <!-- Notices will be loaded here -->
+                        <div class="loading-message">Loading notices...</div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <script>
+        window.API_BASE = 'http://localhost:3000/api';
+        
+        function loadNotices() {
+            fetch('/api/notices')
+                .then(res => res.json())
+                .then(data => {
+                    displayNotices(data);
+                })
+                .catch(err => {
+                    document.getElementById('noticesContainer').innerHTML = 
+                        '<div class="error-message">No matching records found</div>';
+                });
+        }
+        
+        function displayNotices(notices) {
+            const container = document.getElementById('noticesContainer');
+            
+            if (!notices || notices.length === 0) {
+                container.innerHTML = '<div class="no-records">No matching records found</div>';
+                return;
+            }
+            
+            // VULNERABILITY: XSS - rendering unsanitized HTML
+            container.innerHTML = notices.map((notice, index) => {
+                const viewed = notice.viewed == 1 || notice.viewed === true;
+                const statusIcon = viewed ? '✓' : '✗';
+                const statusClass = viewed ? 'status-viewed' : 'status-unviewed';
+                const date = notice.date ? new Date(notice.date).toLocaleDateString('en-GB') : 'N/A';
+                
+                return `
+                    <div class="notice-item" onclick="viewNotice(${notice.id})">
+                        <div class="notice-number">${notice.id || index + 1}</div>
+                        <div class="notice-content">
+                            <h3 class="notice-title">${notice.title || 'Untitled Notice'}</h3>
+                        </div>
+                        <div class="notice-status ${statusClass}">
+                            <span class="status-icon">${statusIcon}</span>
+                        </div>
+                        <div class="notice-date">${date}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function viewNotice(id) {
+            fetch(`/api/notices/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    // Mark as viewed
+                    fetch(`/api/notices/${id}/view`, { method: 'POST' })
+                        .then(() => loadNotices());
+                    
+                    // Show notice details
+                    alert(`Title: ${data.title}\n\nContent: ${data.content}\n\nDate: ${data.date}`);
+                });
+        }
+        
+        function refreshNotices() {
+            loadNotices();
+        }
+        
+        function viewNotices() {
+            loadNotices();
+        }
+        
+        function listView() {
+            loadNotices();
+        }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+        
+        function toggleNavSection(section) {
+            const nav = document.getElementById(section + '-nav');
+            if (nav) {
+                nav.classList.toggle('collapsed');
+            }
+        }
+        
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+        
+        function showUserMenu() {
+            alert('User menu');
+        }
+        
+        // Load notices on page load
+        window.onload = function() {
+            loadNotices();
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            document.getElementById('userName').textContent = user.name || 'Student';
+        };
+    </script>
+</body>
+</html>
+

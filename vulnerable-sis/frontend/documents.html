@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SIS</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="logo-section">
+                <img src="images/logo.png" alt="TRIPATHI GROUP OF INSTITUTIONS" onerror="this.style.display='none'">
+                <div class="header-text">
+                    <h2>TRIPATHI GROUP OF INSTITUTIONS</h2>
+                    <p class="tagline">(Deemed to be University under Section 3 of the UGC Act, 1956)</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <div class="notifications">
+                    <button onclick="showNotifications()" class="icon-btn">
+                        🔔 <span class="badge" id="notifCount">3</span>
+                    </button>
+                </div>
+                
+                <div class="user-section">
+                    <img id="userPhoto" src="images/default-user.png" alt="User" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Ccircle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23667eea%22/%3E%3C/svg%3E'">
+                    <!-- VULNERABILITY: XSS - innerHTML without sanitization -->
+                    <span id="userName" class="user-name"></span>
+                    <button onclick="showUserMenu()" class="dropdown-btn">▼</button>
+                </div>
+                
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <nav>
+                    <div class="nav-section">
+                        <h4>Main Menu</h4>
+                        <ul>
+                            <li><a href="#" onclick="loadSection('home')" class="nav-link active">
+                                <span class="icon">🏠</span> Home
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('documents')" class="nav-link">
+                                <span class="icon">📄</span> Documents
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('announcements')" class="nav-link">
+                                <span class="icon">📢</span> Announcements
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('noticeboard')" class="nav-link">
+                                <span class="icon">📋</span> Notice Board
+                            </a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h4>Student Services</h4>
+                        <ul>
+                            <li><a href="#" onclick="loadSection('feedback')" class="nav-link">
+                                <span class="icon">💬</span> Feedback
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('myinfo')" class="nav-link">
+                                <span class="icon">👤</span> My Info
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('attendance')" class="nav-link">
+                                <span class="icon">📅</span> My Attendance
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('faculty')" class="nav-link">
+                                <span class="icon">👨‍🏫</span> My Faculty
+                            </a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h4>Academic</h4>
+                        <ul>
+                            <li><a href="#" onclick="loadSection('courses')" class="nav-link">
+                                <span class="icon">📚</span> Courses
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('mycourses')" class="nav-link">
+                                <span class="icon">📖</span> My Courses
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('academics')" class="nav-link">
+                                <span class="icon">🎓</span> Academics
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('examinations')" class="nav-link">
+                                <span class="icon">📝</span> Examinations
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('grades')" class="nav-link">
+                                <span class="icon">📊</span> Grades
+                            </a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="nav-section">
+                        <h4>Other Services</h4>
+                        <ul>
+                            <li><a href="#" onclick="loadSection('fee')" class="nav-link">
+                                <span class="icon">💰</span> Fee
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('bankloan')" class="nav-link">
+                                <span class="icon">🏦</span> Bank Loan
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('hallticket')" class="nav-link">
+                                <span class="icon">🎫</span> Hall Ticket
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('activities')" class="nav-link">
+                                <span class="icon">🎭</span> Activities
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('resources')" class="nav-link">
+                                <span class="icon">📚</span> Resources
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('downloads')" class="nav-link">
+                                <span class="icon">⬇️</span> Downloads
+                            </a></li>
+                            <li><a href="#" onclick="loadSection('helpdesk')" class="nav-link">
+                                <span class="icon">❓</span> Help Desk
+                            </a></li>
+                        </ul>
+                    </div>
+                </nav>
+            </aside>
+            
+            <!-- Main Content Area -->
+            <main class="content-area">
+                <div class="breadcrumb">
+                    <span id="breadcrumbPath">Home</span>
+                </div>
+                
+                <div id="contentSection">
+                    <!-- Default Home Content -->
+                    <div class="welcome-section">
+                        <h2>Welcome to Student Information System</h2>
+                        <!-- VULNERABILITY: XSS via innerHTML -->
+                        <p id="welcomeMessage"></p>
+                        
+                        <div class="dashboard-cards">
+                            <div class="card" onclick="loadSection('announcements')">
+                                <div class="card-icon">📢</div>
+                                <h3>Recent Announcements</h3>
+                                <p class="card-count" id="announcementCount">Loading...</p>
+                            </div>
+                            
+                            <div class="card" onclick="loadSection('attendance')">
+                                <div class="card-icon">📅</div>
+                                <h3>Attendance</h3>
+                                <p class="card-count" id="attendancePercent">Loading...</p>
+                            </div>
+                            
+                            <div class="card" onclick="loadSection('examinations')">
+                                <div class="card-icon">📝</div>
+                                <h3>Upcoming Exams</h3>
+                                <p class="card-count" id="examCount">Loading...</p>
+                            </div>
+                            
+                            <div class="card" onclick="loadSection('grades')">
+                                <div class="card-icon">📊</div>
+                                <h3>Current GPA</h3>
+                                <p class="card-count" id="gpaValue">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="mainContent">
+                        <!-- Dynamic content loads here -->
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- VULNERABILITY: Exposed API configuration -->
+    <script>
+        window.API_BASE = 'http://localhost:3000/api';
+        window.DEBUG_MODE = true;
+    </script>
+    
+    <script src="js/dashboard.js"></script>
+    <script src="js/sections.js"></script>
+</body>
+</html>

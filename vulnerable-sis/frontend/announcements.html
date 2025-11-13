@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Announcements - TRIPATHI GROUP OF INSTITUTIONS SIS</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="page-container">
+        <header class="page-header">
+            <h1>📢 Announcements</h1>
+            <a href="index.html" class="back-link">← Back to Home</a>
+        </header>
+        
+        <div class="content-wrapper">
+            <!-- VULNERABILITY: XSS in search -->
+            <div class="search-section">
+                <input 
+                    type="text" 
+                    id="searchBox" 
+                    placeholder="Search announcements..." 
+                    onkeyup="searchAnnouncements()"
+                >
+                <button onclick="searchAnnouncements()">Search</button>
+            </div>
+            
+            <!-- VULNERABILITY: Reflected XSS in results -->
+            <div id="searchResults" class="search-results"></div>
+            
+            <div id="announcementsList" class="announcements-container">
+                <!-- Announcements load here with XSS vulnerability -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // VULNERABILITY: No input sanitization
+        function searchAnnouncements() {
+            const query = document.getElementById('searchBox').value;
+            
+            fetch(`/api/announcements/search?q=${query}`)
+                .then(res => res.json())
+                .then(data => {
+                    // VULNERABILITY: XSS - displaying unsanitized search term
+                    document.getElementById('searchResults').innerHTML = 
+                        `<p>Search results for: <strong>${data.searchTerm}</strong></p>`;
+                    
+                    displayAnnouncements(data.results);
+                });
+        }
+        
+        function displayAnnouncements(announcements) {
+            const container = document.getElementById('announcementsList');
+            
+            // VULNERABILITY: XSS - rendering unsanitized HTML
+            container.innerHTML = announcements.map(announcement => `
+                <div class="announcement-card">
+                    <h3>${announcement.title}</h3>
+                    <div class="announcement-content">${announcement.content}</div>
+                    <div class="announcement-meta">
+                        <span>📅 ${announcement.date}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Load announcements on page load
+        window.onload = function() {
+            fetch('/api/announcements')
+                .then(res => res.json())
+                .then(data => displayAnnouncements(data));
+        };
+    </script>
+</body>
+</html>

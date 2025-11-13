@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Information System - Login</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <img src="images/logo.png" alt="TRIPATHI GROUP OF INSTITUTIONS Logo" id="collegeLogo" onerror="this.style.display='none'">
+            <h1>TRIPATHI GROUP OF INSTITUTIONS</h1>
+            <p>(Deemed to be University under Section 3 of the UGC Act, 1956)</p>
+        </div>
+        
+        <div class="login-box">
+            <div class="user-type-selector">
+                <label>
+                    <input type="radio" id="student" name="userType" value="Students" checked>
+                    <span>Students</span>
+                </label>
+                
+                <label>
+                    <input type="radio" id="parent" name="userType" value="Parents">
+                    <span>Parents</span>
+                </label>
+            </div>
+            
+            <!-- VULNERABILITY: Form vulnerable to client-side bypass -->
+            <form id="loginForm" onsubmit="return handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginId">LOGIN ID</label>
+                    <input 
+                        type="text" 
+                        id="loginId" 
+                        name="loginId" 
+                        placeholder="LOGIN ID" 
+                        required
+                        pattern="[A-Za-z0-9]+"
+                        minlength="3"
+                        maxlength="50"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Password" 
+                        required
+                        minlength="6"
+                    >
+                    <span class="toggle-password" onclick="togglePassword()">👁️</span>
+                </div>
+                
+                <!-- VULNERABILITY: Hidden admin parameter -->
+                <input type="hidden" id="isAdmin" name="isAdmin" value="false">
+                
+                <div class="button-group">
+                    <button type="submit" class="btn-submit">Submit</button>
+                    <button type="reset" class="btn-reset">Reset</button>
+                </div>
+                
+                <!-- VULNERABILITY: XSS in error display -->
+                <div id="errorMessage" class="error-message"></div>
+                <div id="successMessage" class="success-message"></div>
+            </form>
+        </div>
+        
+        <!-- VULNERABILITY: Debug information in HTML comments -->
+        <!-- 
+            Debug Info:
+            API Endpoint: http://localhost:3000/api/login
+            Default Admin: admin / admin123
+            Test Account: student001 / password123
+        -->
+    </div>
+    
+    <script src="js/login.js"></script>
+</body>
+</html>
