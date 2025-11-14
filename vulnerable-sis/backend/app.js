@@ -1,3 +1,4 @@
+// app.js
 require('dotenv').config(); // loads .env in development; in production rely on App Settings
 const express = require('express');
 const mysql = require('mysql');
@@ -26,17 +27,56 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 
 // ---------- FRONTEND SERVING (Azure friendly) ----------
-const frontendBuildPath = process.env.FRONTEND_PATH || path.join(__dirname, '..', 'frontend', 'build');
-const frontendPath = fs.existsSync(frontendBuildPath) ? frontendBuildPath : path.join(__dirname, '..', 'frontend');
-app.use(express.static(frontendPath));
-if (fs.existsSync(path.join(frontendPath, 'images'))) {
-  app.use('/images', express.static(path.join(frontendPath, 'images')));
+// Priority order:
+// 1) If FRONTEND_PATH env var is set, use it directly.
+// 2) Otherwise, prefer a build folder (frontend/build) if present.
+// 3) fallback to ./frontend in repo root (so your static HTML files can live there).
+const envFrontendPath = process.env.FRONTEND_PATH;
+let frontendPath;
+
+if (envFrontendPath && fs.existsSync(envFrontendPath)) {
+  frontendPath = envFrontendPath;
+} else {
+  const candidateBuild = path.join(__dirname, '..', 'frontend', 'build');
+  const candidatePlain = path.join(__dirname, '..', 'frontend');
+  // If app packaged with backend in same folder, try local frontend folders too:
+  const localBuild = path.join(__dirname, 'frontend', 'build');
+  const localPlain = path.join(__dirname, 'frontend');
+
+  if (fs.existsSync(candidateBuild)) {
+    frontendPath = candidateBuild;
+  } else if (fs.existsSync(candidatePlain)) {
+    frontendPath = candidatePlain;
+  } else if (fs.existsSync(localBuild)) {
+    frontendPath = localBuild;
+  } else if (fs.existsSync(localPlain)) {
+    frontendPath = localPlain;
+  } else {
+    // As a last resort use /home/site/wwwroot/frontend (when running in Azure and you created that folder manually)
+    const azurePath = '/home/site/wwwroot/frontend';
+    frontendPath = fs.existsSync(azurePath) ? azurePath : null;
+  }
+}
+
+if (frontendPath) {
+  console.log('Serving frontend from:', frontendPath);
+  app.use(express.static(frontendPath));
+  // optional images folder
+  if (fs.existsSync(path.join(frontendPath, 'images'))) {
+    app.use('/images', express.static(path.join(frontendPath, 'images')));
+  }
+} else {
+  console.warn('No frontend folder found. Static file serving disabled.');
 }
 
 // ---------- CREATE UPLOADS FOLDER ----------
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+  try {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  } catch (err) {
+    console.error('Failed to create uploads directory:', err);
+  }
 }
 app.use('/uploads', express.static(uploadDir));
 
@@ -49,9 +89,10 @@ const db = mysql.createConnection(dbConfig);
 db.connect((err) => {
   if (err) {
     console.error('Database connection failed:', err);
-    return;
+    // don't crash the process; app can still serve static pages and show a friendly message
+  } else {
+    console.log('Connected to MySQL');
   }
-  console.log('Connected to MySQL');
 });
 
 global.db = db;
@@ -62,6 +103,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
+    // sanitize filename and prefix timestamp to avoid collisions
     const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const finalName = `${Date.now()}-${safeName}`;
     cb(null, finalName);
@@ -70,10 +112,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: parseInt(process.env.MAX_UPLOAD_BYTES || '100000000', 10) }
+  limits: { fileSize: parseInt(process.env.MAX_UPLOAD_BYTES || '100000000', 10) } // default ~100MB
 });
 
 // ---------- ROUTES ----------
+
+// Simple health check
+app.get('/healthz', (req, res) => res.status(200).json({ ok: true, env: NODE_ENV }));
 
 // SQL-INJECTION SAFE LOGIN (parameterized)
 app.post('/api/login', (req, res) => {
@@ -100,20 +145,24 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// Mount other routers (ensure these routers use parameterized queries)
-const noticesRouter = require('./routes/notices');
-const announcementsRouter = require('./routes/announcements');
-const documentsRouter = require('./routes/documents');
-const studentsRouter = require('./routes/students');
-const authRouter = require('./routes/auth');
+// Mount other routers (these files should exist and use parameterized queries)
+try {
+  const noticesRouter = require('./routes/notices');
+  const announcementsRouter = require('./routes/announcements');
+  const documentsRouter = require('./routes/documents');
+  const studentsRouter = require('./routes/students');
+  const authRouter = require('./routes/auth');
 
-app.use('/api', noticesRouter);
-app.use('/api', announcementsRouter);
-app.use('/api', documentsRouter);
-app.use('/api', studentsRouter);
-app.use('/api', authRouter);
+  app.use('/api', noticesRouter);
+  app.use('/api', announcementsRouter);
+  app.use('/api', documentsRouter);
+  app.use('/api', studentsRouter);
+  app.use('/api', authRouter);
+} catch (err) {
+  console.warn('Some routers are missing or errored while loading. If you rely on /api routes, ensure routes/* files exist.', err.message);
+}
 
-// FILE UPLOAD
+// FILE UPLOAD endpoint
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
   res.json({ success: true, file: req.file.filename, url: `/uploads/${req.file.filename}` });
@@ -134,10 +183,18 @@ if (process.env.ENABLE_DEBUG === 'true') {
   });
 }
 
-// SPA fallback to index.html if present
+// SPA fallback: if we have an index.html in frontendPath, serve it for any non-API route
 app.get('*', (req, res, next) => {
+  // skip API paths
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/images') || req.path === '/healthz') {
+    return next();
+  }
+  if (!frontendPath) return res.status(404).send('Not Found');
   const indexHtml = path.join(frontendPath, 'index.html');
   if (fs.existsSync(indexHtml)) return res.sendFile(indexHtml);
+  // Some apps use index.htm or login.html — try login.html as startup page if index.html missing
+  const loginHtml = path.join(frontendPath, 'login.html');
+  if (fs.existsSync(loginHtml)) return res.sendFile(loginHtml);
   next();
 });
 
