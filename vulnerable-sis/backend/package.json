@@ -8,7 +8,7 @@
     "postinstall": "echo 'Backend installed on Azure'"
   },
   "engines": {
-    "node": ">=20 <25"
+    "node": "20.x"
   },
   "dependencies": {
     "express": "^4.18.2",
