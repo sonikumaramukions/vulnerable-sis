@@ -57,6 +57,11 @@ jobs:
       contents: read
 
     steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
@@ -69,11 +74,6 @@ jobs:
           find ${{ github.workspace }}/deploy -name "package.json" -type f
           echo "Contents of deploy directory:"
           ls -la ${{ github.workspace }}/deploy/ || true
-
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
