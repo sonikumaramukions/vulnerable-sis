@@ -1,4 +1,4 @@
-require('dotenv').config(); // load .env locally; App Settings in Azure override env vars
+require('dotenv').config(); // loads .env in development; in production rely on App Settings
 const express = require('express');
 const mysql = require('mysql');
 const bodyParser = require('body-parser');
@@ -11,7 +11,7 @@ const cors = require('cors');
 const dbConfigs = require('./database');
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // ---------- CORS ----------
@@ -26,33 +26,11 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 
 // ---------- FRONTEND SERVING (Azure friendly) ----------
-/*
-  Strategy:
-  - Prefer FRONTEND_PATH app setting (absolute path).
-  - Fallback to ./frontend/build then ./frontend.
-  - If the chosen path contains index.html we will serve it statically and fallback to index.html for SPA.
-*/
-const frontendPathFromEnv = process.env.FRONTEND_PATH;
-let frontendCandidate = null;
-
-if (frontendPathFromEnv && fs.existsSync(frontendPathFromEnv)) {
-  frontendCandidate = frontendPathFromEnv;
-} else {
-  const buildPath = path.join(__dirname, '..', 'frontend', 'build');
-  const simplePath = path.join(__dirname, '..', 'frontend');
-  if (fs.existsSync(buildPath)) frontendCandidate = buildPath;
-  else if (fs.existsSync(simplePath)) frontendCandidate = simplePath;
-  else {
-    // fallback to a safe internal "public" dir (create if missing)
-    const internalPublic = path.join(__dirname, 'public');
-    if (!fs.existsSync(internalPublic)) fs.mkdirSync(internalPublic, { recursive: true });
-    frontendCandidate = internalPublic;
-  }
-}
-const FRONTEND_PATH = frontendCandidate;
-app.use(express.static(FRONTEND_PATH));
-if (fs.existsSync(path.join(FRONTEND_PATH, 'images'))) {
-  app.use('/images', express.static(path.join(FRONTEND_PATH, 'images')));
+const frontendBuildPath = process.env.FRONTEND_PATH || path.join(__dirname, '..', 'frontend', 'build');
+const frontendPath = fs.existsSync(frontendBuildPath) ? frontendBuildPath : path.join(__dirname, '..', 'frontend');
+app.use(express.static(frontendPath));
+if (fs.existsSync(path.join(frontendPath, 'images'))) {
+  app.use('/images', express.static(path.join(frontendPath, 'images')));
 }
 
 // ---------- CREATE UPLOADS FOLDER ----------
@@ -63,35 +41,27 @@ if (!fs.existsSync(uploadDir)) {
 app.use('/uploads', express.static(uploadDir));
 
 // ---------- DATABASE CONNECTION ----------
-const dbConfig = (NODE_ENV === 'production') ? dbConfigs.production : dbConfigs.development;
+const dbConfig = NODE_ENV === 'production' ? dbConfigs.production : dbConfigs.development;
 if (typeof dbConfig.multipleStatements === 'undefined') dbConfig.multipleStatements = false;
 
-let db;
-try {
-  db = mysql.createConnection(dbConfig);
-} catch (err) {
-  console.error('MySQL createConnection failed:', err);
-}
+const db = mysql.createConnection(dbConfig);
 
-// Non-blocking connect (we log). App still runs even if DB not reachable.
-if (db) {
-  db.connect((err) => {
-    if (err) {
-      console.error('Database connection failed:', err && err.message ? err.message : err);
-    } else {
-      console.log('Connected to MySQL');
-    }
-  });
-  global.db = db;
-}
+db.connect((err) => {
+  if (err) {
+    console.error('Database connection failed:', err);
+    return;
+  }
+  console.log('Connected to MySQL');
+});
 
-// ---------- FILE UPLOAD ----------
+global.db = db;
+
+// ---------- FILE UPLOAD (safer) ----------
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    // sanitize filename and prefix with timestamp
     const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.\-_]/g, '_');
     const finalName = `${Date.now()}-${safeName}`;
     cb(null, finalName);
@@ -111,9 +81,7 @@ app.post('/api/login', (req, res) => {
   if (!loginId || !password || !userType) return res.status(400).json({ success: false, error: 'Missing credentials' });
 
   const q = 'SELECT * FROM users WHERE login_id = ? AND password = ? AND user_type = ? LIMIT 1';
-  if (!global.db) return res.status(500).json({ error: 'Database not configured' });
-
-  global.db.query(q, [loginId, password, userType], (err, rows) => {
+  db.query(q, [loginId, password, userType], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
 
     if (rows && rows.length > 0) {
@@ -132,22 +100,26 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// mount routers only if files exist (defensive)
-const routerFiles = ['notices', 'announcements', 'documents', 'students', 'auth'];
-routerFiles.forEach((r) => {
-  const p = path.join(__dirname, 'routes', r + '.js');
-  if (fs.existsSync(p)) {
-    app.use('/api', require(p));
-  }
-});
+// Mount other routers (ensure these routers use parameterized queries)
+const noticesRouter = require('./routes/notices');
+const announcementsRouter = require('./routes/announcements');
+const documentsRouter = require('./routes/documents');
+const studentsRouter = require('./routes/students');
+const authRouter = require('./routes/auth');
 
-// file upload endpoint
+app.use('/api', noticesRouter);
+app.use('/api', announcementsRouter);
+app.use('/api', documentsRouter);
+app.use('/api', studentsRouter);
+app.use('/api', authRouter);
+
+// FILE UPLOAD
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
   res.json({ success: true, file: req.file.filename, url: `/uploads/${req.file.filename}` });
 });
 
-// debug endpoint only when allowed
+// DEBUG ENDPOINT (ONLY when ENABLE_DEBUG=true)
 if (process.env.ENABLE_DEBUG === 'true') {
   app.get('/api/debug', (req, res) => {
     const safeEnv = { ...process.env };
@@ -162,21 +134,10 @@ if (process.env.ENABLE_DEBUG === 'true') {
   });
 }
 
-// SPA fallback -> index.html if present
+// SPA fallback to index.html if present
 app.get('*', (req, res, next) => {
-  const indexHtml = path.join(FRONTEND_PATH, 'index.html');
+  const indexHtml = path.join(frontendPath, 'index.html');
   if (fs.existsSync(indexHtml)) return res.sendFile(indexHtml);
-  // If no index, show a tiny informative HTML so Azure returns 200 instead of 503
-  if (req.path === '/' || req.path === '') {
-    return res.send(`
-      <!doctype html>
-      <html><head><meta charset="utf-8"><title>App</title></head>
-      <body>
-        <h2>App is running</h2>
-        <p>No frontend/index.html found at ${FRONTEND_PATH} — please add your frontend files to that directory.</p>
-      </body></html>
-    `);
-  }
   next();
 });
 
