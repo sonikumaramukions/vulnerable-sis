@@ -47,6 +47,7 @@ jobs:
         with:
           name: node-app
           path: vulnerable-sis/backend
+          retention-days: 1
 
   deploy:
     needs: build
@@ -56,12 +57,40 @@ jobs:
       contents: read
 
     steps:
-      - name: Download artifact
+      - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
+          path: deploy
 
-      - name: Login to Azure
+      - name: Reorganize deployment package
+        run: |
+          echo "Current directory structure:"
+          ls -la deploy/ || true
+          echo "Checking for backend files..."
+          
+          # If artifact preserved the full path structure
+          if [ -d "deploy/vulnerable-sis/backend" ]; then
+            echo "Found deploy/vulnerable-sis/backend - moving to deploy/backend"
+            mv deploy/vulnerable-sis/backend deploy/backend
+            rm -rf deploy/vulnerable-sis 2>/dev/null || true
+          # If artifact is already flattened
+          elif [ -d "deploy/backend" ]; then
+            echo "Backend already in correct location: deploy/backend"
+          # If files are directly in deploy
+          elif [ -f "deploy/package.json" ]; then
+            echo "Files are directly in deploy - creating backend folder"
+            mkdir -p deploy/backend
+            mv deploy/* deploy/backend/ 2>/dev/null || true
+            mv deploy/.* deploy/backend/ 2>/dev/null || true
+          fi
+          
+          echo "Final structure:"
+          ls -la deploy/backend/ || ls -la deploy/ || true
+          echo "Package.json location:"
+          find deploy -name "package.json" -type f
+
+      - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -70,6 +99,6 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'vulnerable-sis-app'    # <-- must match App Service name exactly
-          package: node-app
+          app-name: 'vulnerable-sis-app'      # <--- confirm this matches your App Service name
+          package: './deploy/backend'         # <--- path to backend files
 
