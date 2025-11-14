@@ -1,7 +1,7 @@
 module.exports = {
     development: {
         host: process.env.DB_HOST || "localhost",
-        user: process.env.DB_USER || "root",
+        user: process.env.DB_USER || "student",
         password: process.env.DB_PASSWORD || "password123",
         database: process.env.DB_NAME || "student_portal",
         port: process.env.DB_PORT || 3306,

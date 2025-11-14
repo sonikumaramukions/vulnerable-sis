@@ -32,14 +32,10 @@ if (!fs.existsSync(uploadDir)) {
 app.use("/uploads", express.static(uploadDir));
 
 // ---------- DATABASE CONNECTION (Azure Fix) ----------
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "password123",
-  database: process.env.DB_NAME || "student_portal",
-  port: process.env.DB_PORT || 3306,
-  multipleStatements: true // keep vulnerable
-});
+const dbConfig = require("./config/database");
+const env = process.env.NODE_ENV === "production" ? "production" : "development";
+const dbSettings = dbConfig[env];
+const db = mysql.createConnection(dbSettings);
 
 db.connect(err => {
   if (err) {
